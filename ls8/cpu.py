@@ -1,42 +1,56 @@
 """CPU functionality."""
 
 import sys
+HLT = 0x01  # Halt CPU and exit emulator
+LDI = 0x82  # Set value of register to integer
+PRN = 0x47  # Print numeric value stored in register
+MUL = 0xA2  # Multiply values in two registers together and store the result in the first register
+
 
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 0x100
+        self.reg = [0] * 0x08
+        self.reg[7] = 0xF4
+        self.pc = 0
+        self.mar = 0
+        self.mdr = 0
+        self.fl = 0x00
+        self.sp = 7
 
-    def load(self):
+    def load(self, path):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        f = open(path)
+        program = f.read().splitlines()
+        f.close()
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        for index, line in enumerate(program):
+            comment = line.find('#')
+            if comment != -1:
+                line = line[:comment]
+            if line != '':
+                line = int(line.strip(), 2)
+            program[index] = line
+
+        while '' in program:
+            program.remove('')
 
         for instruction in program:
             self.ram[address] = instruction
             address += 1
-
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -48,8 +62,8 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
-            #self.ie,
+            # self.fl,
+            # self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
             self.ram_read(self.pc + 2)
@@ -62,4 +76,38 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+
+        while True:
+            ir = self.ram_read(self.pc)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+
+            if ir == HLT:
+                exit()
+
+            elif ir == LDI:
+                self.reg[operand_a] = operand_b
+                self.pc += 2
+
+            elif ir == PRN:
+                print(self.reg[operand_a])
+                self.pc += 1
+
+            elif ir == MUL:
+                reg_a = self.reg[operand_a]
+                reg_b = self.reg[operand_b]
+                mul = reg_a * reg_b
+                self.reg[operand_a] = mul
+                self.pc += 2
+
+            self.pc += 1
+
+    def ram_read(self, address):
+        self.mar = address
+        self.mdr = self.ram[address]
+        return self.mdr
+
+    def ram_write(self, address, value):
+        self.mar = address
+        self.mdr = value
+        self.ram[self.mar] = self.mdr

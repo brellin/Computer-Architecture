@@ -127,7 +127,7 @@ class CPU:
                 self.branchtable['ALU'][ir](ir, operand_a, operand_b)
                 self.pc += (ir >> 6) + 1
 
-        self.trace()
+            self.trace()
 
     def ram_read(self, address):
         self.mar = address
